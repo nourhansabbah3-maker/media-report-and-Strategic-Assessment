@@ -266,7 +266,7 @@
       try {
         const current = await ghApi('reports/manifest.json', 'GET');
         sha = current.sha;
-        manifest = JSON.parse(atob(current.content));
+        manifest = JSON.parse(decodeURIComponent(escape(atob(current.content))));
       } catch (e) {
         manifest = [];
       }
