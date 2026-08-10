@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  هذا الملف لا يحتاج تعديل يدوي أبداً.
+  كل تقرير جديد يُرفع عن طريق صفحة upload.html يظهر هنا تلقائياً
+  كـ"التقرير الحالي"، والتقرير الذي كان حالياً ينتقل تلقائياً
+  إلى قسم "التقارير السابقة" — بدون لصق أي كود هنا.
+  =====================================================================
+-->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقارير الرصد الإعلامي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:auto;}
+  body{
+    font-family:'Cairo',sans-serif;
+    background:#0d1b2a;
+    color:#e8e4dc;
+  }
+
+  .status-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:#0a1626;border-bottom:1px solid rgba(200,151,58,.25);
+    padding:10px 14px;font-size:12px;position:sticky;top:0;z-index:10;
+  }
+  .status-bar .t{color:rgba(255,255,255,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .status-bar a{
+    color:#e8b85a;font-weight:700;text-decoration:none;flex-shrink:0;
+    background:rgba(200,151,58,.12);border:1px solid rgba(200,151,58,.35);
+    padding:5px 12px;border-radius:20px;font-size:11px;
+  }
+
+  #reportFrame{display:block;width:100%;border:0;background:#0d1b2a;min-height:60vh;}
+
+  .prev-section{padding:28px 16px 50px;max-width:720px;margin:0 auto;}
+  h2.section-title{
+    font-size:14px;font-weight:700;color:#e8b85a;
+    margin:0 0 14px 4px;display:flex;align-items:center;gap:8px;
+  }
+  h2.section-title::before{
+    content:'';width:4px;height:16px;background:#c8973a;border-radius:2px;display:inline-block;
+  }
+  .prev-list{display:flex;flex-direction:column;gap:10px;}
+  .prev-item{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    text-decoration:none;cursor:pointer;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;padding:14px 16px;transition:.2s;
+  }
+  .prev-item:active{transform:scale(.98);}
+  .prev-item .name{font-size:13px;font-weight:600;color:#e8e4dc;}
+  .prev-item .go{font-size:11px;color:rgba(255,255,255,.4);}
+  .empty-msg{font-size:12px;opacity:.5;padding:8px 4px;}
+</style>
+</head>
+<body>
+
+  <div class="status-bar">
+    <span class="t" id="statusText">جاري التحميل...</span>
+    <a id="backToCurrent" style="display:none;" href="javascript:void(0)">↩ الحالي</a>
+  </div>
+
+  <iframe id="reportFrame" scrolling="no"></iframe>
+
+  <div class="prev-section">
+    <h2 class="section-title">التقارير السابقة</h2>
+    <div id="prevSlot" class="prev-list">جاري التحميل...</div>
+  </div>
+
+  <script>
+    const iframe = document.getElementById('reportFrame');
+    const statusText = document.getElementById('statusText');
+    const backToCurrent = document.getElementById('backToCurrent');
+    const prevSlot = document.getElementById('prevSlot');
+    let current = null;
+
+    function resizeFrame() {
+      try {
+        const doc = iframe.contentDocument;
+        if (doc && doc.documentElement) {
+          iframe.style.height = doc.documentElement.scrollHeight + 'px';
+        }
+      } catch (e) {}
+    }
+
+    function loadReport(report, isCurrent) {
+      iframe.src = 'reports/' + report.file;
+      iframe.onload = () => {
+        resizeFrame();
+        setTimeout(resizeFrame, 300);
+        setTimeout(resizeFrame, 1000);
+      };
+      statusText.textContent = (isCurrent ? '📄 التقرير الحالي — ' : '📄 عرض تقرير سابق — ') + report.title;
+      backToCurrent.style.display = isCurrent ? 'none' : 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    backToCurrent.addEventListener('click', () => { if (current) loadReport(current, true); });
+
+    fetch('reports/manifest.json?t=' + Date.now())
+      .then(r => r.json())
+      .then(reports => {
+        if (!reports.length) {
+          statusText.textContent = 'لا توجد تقارير حتى الآن';
+          prevSlot.innerHTML = '<div class="empty-msg">لا توجد تقارير سابقة بعد</div>';
+          return;
+        }
+        const sorted = reports.slice().sort((a, b) => b.date.localeCompare(a.date));
+        current = sorted[0];
+        const previous = sorted.slice(1);
+
+        prevSlot.innerHTML = '';
+        if (previous.length === 0) {
+          prevSlot.innerHTML = '<div class="empty-msg">لا توجد تقارير سابقة بعد</div>';
+        } else {
+          previous.forEach(r => {
+            const el = document.createElement('a');
+            el.className = 'prev-item';
+            el.innerHTML = `<span class="name">${r.title}</span><span class="go">فتح ⟵</span>`;
+            el.addEventListener('click', () => loadReport(r, false));
+            prevSlot.appendChild(el);
+          });
+        }
+        loadReport(current, true);
+      })
+      .catch(() => {
+        statusText.textContent = 'تعذّر تحميل التقارير';
+        prevSlot.innerHTML = '<div class="empty-msg">تعذّر تحميل قائمة التقارير</div>';
+      });
+  </script>
+</body>
+</html>
